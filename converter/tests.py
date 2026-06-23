@@ -2,7 +2,7 @@ import io
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from PIL import Image
-
+from .services import convert_images_to_pdf, convert_pdf_to_images
 
 class ImagesToPdfAPITestCase(APITestCase):
 
@@ -59,3 +59,25 @@ class ImagesToPdfAPITestCase(APITestCase):
         # Ожидаем ошибку 400 Bad Request
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data, {"error": "Файлы не переданы"})
+
+    def test_successful_pdf_to_images_conversion(self):
+        """Тест успешной конвертации PDF обратно в архив с картинками"""
+        url = reverse('pdf_to_images')
+
+        # 1. Сначала генерируем валидный PDF в памяти, используя наш старый сервис
+        img = self.generate_test_image('source.jpg', ext='JPEG')
+        valid_pdf_buffer = convert_images_to_pdf([img])
+        valid_pdf_buffer.name = 'test.pdf'
+
+        # 2. Отправляем этот PDF на новый эндпоинт
+        data = {'pdf': valid_pdf_buffer}
+        response = self.client.post(url, data, format='multipart')
+
+        # 3. Проверяем результат
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/zip')
+        self.assertIn('filename="converted_pages.zip"', response['Content-Disposition'])
+
+        # Проверяем, что архив не пустой
+        zip_content = b"".join(response.streaming_content)
+        self.assertTrue(len(zip_content) > 0)

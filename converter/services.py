@@ -1,8 +1,10 @@
 import io
+import zipfile
 from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
+from pdf2image import convert_from_bytes
 
 
 def convert_images_to_pdf(uploaded_images):
@@ -45,3 +47,37 @@ def convert_images_to_pdf(uploaded_images):
     pdf_canvas.save()
     pdf_buffer.seek(0)
     return pdf_buffer
+
+def convert_pdf_to_images(uploaded_pdf):
+    """
+    Принимает PDF-файл из request.FILES
+    Возвращает байтовый поток (BytesIO) с ZIP-архивом, внутри которого лежат картинки страниц
+    """
+    # Читаем байты из загруженного файла
+    pdf_bytes = uploaded_pdf.read()
+
+    # Конвертируем PDF в список объектов PIL Image
+    # ВНИМАНИЕ: Укажи здесь СВОЙ путь к папке bin распакованного poppler!
+    POPPLER_PATH = r"E:\Study\App\poppler-26.02.0\Library\bin"
+
+    pages = convert_from_bytes(pdf_bytes, poppler_path=POPPLER_PATH)
+
+    # Создаем буфер для ZIP-архива в памяти
+    zip_buffer = io.BytesIO()
+
+    # Открываем ZIP на запись
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for index, page in enumerate(pages):
+            # Сохраняем каждую страницу как JPEG в промежуточный буфер
+            img_buffer = io.BytesIO()
+            page.save(img_buffer, format='JPEG', quality=90)
+            img_buffer.seek(0)
+
+            # Имя файла внутри архива: page_1.jpg, page_2.jpg и т.д.
+            filename = f"page_{index + 1}.jpg"
+
+            # Записываем байты картинки в архив
+            zip_file.writestr(filename, img_buffer.read())
+
+    zip_buffer.seek(0)
+    return zip_buffer
