@@ -2,6 +2,7 @@ import io
 from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
 
 
 def convert_images_to_pdf(uploaded_images):
@@ -33,9 +34,12 @@ def convert_images_to_pdf(uploaded_images):
         img.save(img_buffer, format='JPEG', quality=85)
         img_buffer.seek(0)
 
+        # ОБОРАЧИВАЕМ поток в ImageReader, чтобы ReportLab на Windows не ругался
+        img_reader = ImageReader(img_buffer)
+
         # Рисуем изображение на всю страницу PDF
         # (В будущем можно сделать подгонку под размер картинки)
-        pdf_canvas.drawImage(img_buffer, 0, 0, width=page_width, height=page_height)
+        pdf_canvas.drawImage(img_reader, 0, 0, width=page_width, height=page_height)
         pdf_canvas.showPage()  # Создаем следующую страницу для следующего фото
 
     pdf_canvas.save()

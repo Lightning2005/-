@@ -32,6 +32,8 @@ class ImagesToPdfAPITestCase(APITestCase):
         # 4. Отправляем POST-запрос на эндпоинт
         response = self.client.post(url, data, format='multipart')
 
+        #print("\n--- ДЕТАЛИ ОШИБКИ БЭКЕНДА: ---", response.data)
+
         # 5. Проверяем утверждения (Asserts)
         # Ожидаем статус-код 200 OK
         self.assertEqual(response.status_code, 200)
