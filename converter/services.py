@@ -57,7 +57,7 @@ def convert_pdf_to_images(uploaded_pdf):
     pdf_bytes = uploaded_pdf.read()
 
     # Конвертируем PDF в список объектов PIL Image
-    # ВНИМАНИЕ: Укажи здесь СВОЙ путь к папке bin распакованного poppler!
+    # Путь к папке bin распакованного poppler
     POPPLER_PATH = r"E:\Study\App\poppler-26.02.0\Library\bin"
 
     pages = convert_from_bytes(pdf_bytes, poppler_path=POPPLER_PATH)
