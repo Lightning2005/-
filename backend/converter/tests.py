@@ -81,3 +81,43 @@ class ImagesToPdfAPITestCase(APITestCase):
         # Проверяем, что архив не пустой
         zip_content = b"".join(response.streaming_content)
         self.assertTrue(len(zip_content) > 0)
+
+
+class GenericConvertAPITestCase(APITestCase):
+    def setUp(self):
+        self.url = reverse('generic_convert')
+
+    def generate_test_image(self, ext='JPEG'):
+        file_buf = io.BytesIO()
+        image = Image.new('RGB', (100, 100), color='red')
+        image.save(file_buf, format=ext)
+        file_buf.name = f'test.{ext.lower()}'
+        file_buf.seek(0)
+        return file_buf
+
+    def test_convert_png_to_webp(self):
+        """Тест успешной конвертации PNG в WebP"""
+        img = self.generate_test_image(ext='PNG')
+        data = {'file': img, 'target': 'webp'}
+
+        response = self.client.post(self.url, data, format='multipart')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/webp')
+        content = b"".join(response.streaming_content)
+        self.assertTrue(len(content) > 0)
+
+    def test_invalid_format(self):
+        """Тест ошибки при запросе неподдерживаемого формата"""
+        img = self.generate_test_image(ext='PNG')
+        data = {'file': img, 'target': 'pdf'}  # PDF не входит в список в views.py
+
+        response = self.client.post(self.url, data, format='multipart')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.data)
+
+    def test_missing_data(self):
+        """Тест ошибки при отсутствии файла или target"""
+        response = self.client.post(self.url, {}, format='multipart')
+        self.assertEqual(response.status_code, 400)
