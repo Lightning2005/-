@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SUPPORTED_TOOLS } from '../config/tools';
 
 export default function MainLayout({ children }) {
@@ -9,6 +9,14 @@ export default function MainLayout({ children }) {
   // Рефы для отслеживания клика «мимо элементов»
   const pdfRef = useRef(null);
   const imageRef = useRef(null);
+
+  // Получаем информацию о текущем URL
+  const location = useLocation();
+
+  // Массив путей, где НЕ ДОЛЖНО быть рекламы
+  const hideAdsRoutes = ['/privacy', '/contacts'];
+  // Флаг: показывать ли рекламу на текущей странице
+  const showAds = !hideAdsRoutes.includes(location.pathname);
 
   // Группируем инструменты из конфигурации на основе их категорий
   const toolsArray = Object.entries(SUPPORTED_TOOLS).map(([slug, data]) => ({ slug, ...data }));
@@ -116,9 +124,11 @@ export default function MainLayout({ children }) {
       <div className="flex-1 w-full flex p-6 gap-6 justify-between items-start relative max-w-[1600px] mx-auto py-12">
 
         {/* ЛЕВАЯ РЕКЛАМА */}
-        <aside className="hidden xl:flex w-[200px] h-[600px] bg-white border border-slate-200 rounded-xl p-4 items-center justify-center text-center text-slate-400 shrink-0 sticky top-6 shadow-sm z-0">
-          Реклама <br /> (Небоскреб)
-        </aside>
+        {showAds && (
+          <aside className="hidden xl:flex w-[200px] h-[600px] bg-white border border-slate-200 rounded-xl p-4 items-center justify-center text-center text-slate-400 shrink-0 sticky top-6 shadow-sm z-0">
+            Реклама <br /> (Небоскреб)
+          </aside>
+          )}
 
         {/* ЦЕНТРАЛЬНАЯ РАБОЧАЯ ЗОНА */}
         <div className="flex-1 flex flex-col items-center gap-8 max-w-[1000px] mx-auto w-full">
@@ -129,21 +139,32 @@ export default function MainLayout({ children }) {
           </main>
 
           {/* НИЖНИЙ БЛОК РЕКЛАМЫ */}
-          <div className="w-full max-w-[1000px] h-[175px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-center text-slate-400 shrink-0 shadow-sm">
-            Нижний рекламный block (1000х175)
-          </div>
+          {showAds && (
+            <div className="w-full max-w-[1000px] h-[175px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-center text-slate-400 shrink-0 shadow-sm">
+              Нижний рекламный block (1000х175)
+            </div>
+          )}
 
         </div>
 
         {/* ПРАВАЯ РЕКЛАМА */}
-        <aside className="hidden xl:flex w-[200px] h-[600px] bg-white border border-slate-200 rounded-xl p-4 items-center justify-center text-center text-slate-400 shrink-0 sticky top-6 shadow-sm z-0">
-          Реклама <br /> (Небоскреб)
-        </aside>
+        {showAds && (
+          <aside className="hidden xl:flex w-[200px] h-[600px] bg-white border border-slate-200 rounded-xl p-4 items-center justify-center text-center text-slate-400 shrink-0 sticky top-6 shadow-sm z-0">
+            Реклама <br /> (Небоскреб)
+          </aside>
+        )}
       </div>
 
       {/* ПОДВАЛ */}
-      <footer className="w-full text-center text-xs text-slate-400 py-4 mt-auto border-t border-slate-200/50 bg-white/50 backdrop-blur-sm">
-        &copy; {new Date().getFullYear()} Конверт. Все права защищены.
+      <footer className="w-full text-center text-xs text-slate-400 py-6 mt-auto border-t border-slate-200/50 bg-white/50 backdrop-blur-sm flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 shrink-0">
+        <div>
+          &copy; {new Date().getFullYear()} Конверт. Все права защищены.
+        </div>
+        <div className="flex gap-4 font-medium text-slate-500">
+          <Link to="/privacy" className="hover:text-blue-600 transition">Политика конфиденциальности</Link>
+          <span className="text-slate-200">|</span>
+          <Link to="/contacts" className="hover:text-blue-600 transition">Контакты</Link>
+        </div>
       </footer>
     </div>
   );
