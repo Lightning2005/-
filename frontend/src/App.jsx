@@ -9,13 +9,10 @@ export default function App() {
     <BrowserRouter>
       <MainLayout>
         <Routes>
-          {/* Главная страница */}
           <Route path="/" element={<HomePage />} />
-
-          {/* Динамический роут для инструментов, например: /jpg-to-pdf */}
-          <Route path="/:source-to-:target" element={<ConverterPage />} />
-
-          {/* Сюда можно будет добавить 404 страницу, если роут не найден */}
+          {/* Переносим инструменты на явный эндпоинт для безопасности роутинга и SEO */}
+          <Route path="/tool/:slug" element={<ConverterPage />} />
+          {/* Сюда в будущем легко встанут /about, /privacy, /faq */}
         </Routes>
       </MainLayout>
     </BrowserRouter>

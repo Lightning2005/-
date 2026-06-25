@@ -8,12 +8,11 @@ export default function MainLayout({ children }) {
       {/* ШАПКА */}
       <header className="w-full bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md shrink-0 z-10">
         <div className="font-bold text-xl flex items-center gap-2 cursor-pointer">
-          <span>✉️</span>
-          <span>Конверт</span>
+          <Link to="/">✉️ Конверт</Link>
         </div>
         <nav className="hidden md:flex gap-6 font-medium">
-          <a href="#" className="hover:text-blue-200 transition">PDF в Картинки</a>
-          <a href="#" className="hover:text-blue-200 transition">Картинки в PDF</a>
+          <Link to="/tool/jpg-to-pdf" className="hover:text-blue-200 transition">Картинки в PDF</Link>
+          <Link to="/tool/pdf-to-jpg" className="hover:text-blue-200 transition">PDF в Картинки</Link>
         </nav>
         <div className="flex items-center gap-4">
           <button className="p-2 hover:bg-blue-700 rounded transition text-sm">RU</button>
@@ -40,8 +39,8 @@ export default function MainLayout({ children }) {
           </main>
 
           {/* НИЖНИЙ БЛОК РЕКЛАМЫ */}
-          <div className="w-full max-w-[728px] h-[90px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-center text-slate-400 shrink-0 shadow-sm">
-            Нижний рекламный блок (728х90)
+          <div className="w-full max-w-[1000px] h-[175px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-center text-slate-400 shrink-0 shadow-sm">
+            Нижний рекламный блок (1000х175)
           </div>
 
         </div>
