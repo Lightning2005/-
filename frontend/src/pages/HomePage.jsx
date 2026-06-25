@@ -12,29 +12,52 @@ export default function HomePage() {
   const [targetFormat, setTargetFormat] = useState('');
   const [error, setError] = useState('');
 
+  // Стейт для интерактивного FAQ аккордеона (хранит индекс открытого вопроса)
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
+
   // Ограничения для безопасности сервера
   const MAX_TOTAL_SIZE_MB = 50;
 
-  // 1. Извлечение расширения файла
+  // Данные для блока FAQ
+  const faqData = [
+    {
+      q: 'Безопасно ли загружать мои файлы на ваш сайт?',
+      a: 'Абсолютно безопасно. Все загруженные файлы обрабатываются в изолированном облачном хранилище и автоматически удаляются с наших серверов ровно через 1 час после завершения конвертации. Мы не просматриваем, не копируем и не передаем ваши данные третьим лицам.'
+    },
+    {
+      q: 'Как сконвертировать несколько картинок в один PDF-документ?',
+      a: 'Очень просто! Перейдите в инструмент «Картинки в PDF» через верхнее меню, перетащите в зону загрузки сразу несколько файлов (до 10 штук за раз) и нажмите кнопку «Конвертировать». Сервис автоматически соберет их в один аккуратный многостраничный PDF-файл.'
+    },
+    {
+      q: 'Портится ли качество изображений при конвертации?',
+      a: 'Нет. Наш сервис использует современные алгоритмы обработки, которые сохраняют исходное разрешение, четкость и цветовую гамму ваших изображений. При конвертации в форматы без потери качества (например, из PNG в PDF) ваши файлы останутся в оригинальном виде.'
+    },
+    {
+      q: 'Есть ли ограничения на размер или количество файлов?',
+      a: 'На текущем этапе вы можете бесплатно загружать до 10 файлов в рамках одной сессии конвертации. Ограничение по размеру одного файла составляет 50 МБ, чего более чем достаточно для любых высококачественных фотографий и стандартных документов.'
+    },
+    {
+      q: 'Нужно ли платить за использование сервиса?',
+      a: 'Нет, наш конвертер полностью бесплатен. Вам не нужно оформлять подписку, регистрироваться или вводить данные карт. Все инструменты доступны в полном объеме без каких-либо скрытых платежей или водяных знаков на готовых документах.'
+    }
+  ];
+
   const getFileExtension = (filename) => {
     const ext = filename.split('.').pop().toLowerCase();
     return ext === 'jpeg' ? 'jpg' : ext;
   };
 
-  // 2. Поиск доступных целевых форматов на основе tools.js
   const getAvailableTargets = (sourceExt) => {
     return Object.values(SUPPORTED_TOOLS)
       .filter((tool) => tool.source === sourceExt)
       .map((tool) => ({ ext: tool.target, name: tool.targetName }));
   };
 
-  // 3. Валидация и обработка массива файлов
   const handleFilesReceived = (filesList) => {
     setError('');
     const filesArray = Array.from(filesList);
     if (filesArray.length === 0) return;
 
-    // Проверяем формат первого файла для определения исходного типа
     const firstExt = getFileExtension(filesArray[0].name);
     const availableTargets = getAvailableTargets(firstExt);
 
@@ -43,14 +66,12 @@ export default function HomePage() {
       return;
     }
 
-    // Проверяем, чтобы все загруженные файлы были одного и того же формата
     const isSameType = filesArray.every((file) => getFileExtension(file.name) === firstExt);
     if (!isSameType) {
       setError('Для массовой конвертации выберите файлы одного формата (например, только JPG или только PDF).');
       return;
     }
 
-    // Находим лимит на количество файлов для данного формата в tools.js
     const sampleToolKey = Object.keys(SUPPORTED_TOOLS).find(
       (key) => SUPPORTED_TOOLS[key].source === firstExt
     );
@@ -61,21 +82,17 @@ export default function HomePage() {
       return;
     }
 
-    // Проверка суммарного веса файлов в мегабайтах
     const totalSizeMb = filesArray.reduce((acc, file) => acc + file.size, 0) / (1024 * 1024);
     if (totalSizeMb > MAX_TOTAL_SIZE_MB) {
       setError(`Общий вес файлов превышает ${MAX_TOTAL_SIZE_MB} МБ. Пожалуйста, сожмите файлы или загружайте их частями.`);
       return;
     }
 
-    // Если всё ок — фиксируем стейт
     setSelectedFiles(filesArray);
     setDetectedSource(firstExt);
-    // Автоматически предвыбираем первый доступный формат из списка
     setTargetFormat(availableTargets[0].ext);
   };
 
-  // Обработчики событий загрузки
   const handleDrop = (e) => {
     e.preventDefault();
     if (e.dataTransfer.files) handleFilesReceived(e.dataTransfer.files);
@@ -85,13 +102,9 @@ export default function HomePage() {
     if (e.target.files) handleFilesReceived(e.target.files);
   };
 
-  // 4. Перенаправление на страницу конкретного инструмента с передачей файлов
   const handleProceed = () => {
     if (!detectedSource || !targetFormat || selectedFiles.length === 0) return;
-
     const toolSlug = `${detectedSource}-to-${targetFormat}`;
-
-    // Переходим на страницу инструмента и передаем файлы через Router State
     navigate(`/tool/${toolSlug}`, {
       state: { preloadedFiles: selectedFiles }
     });
@@ -104,32 +117,30 @@ export default function HomePage() {
     setError('');
   };
 
-  // Группировка инструментов из tools.js для вывода плитки на главной
-  const toolsArray = Object.entries(SUPPORTED_TOOLS).map(([slug, data]) => ({ slug, ...data }));
-  const imageTools = toolsArray.filter(t => t.category === 'image');
-  const pdfTools = toolsArray.filter(t => t.category === 'pdf');
+  const toggleFaq = (index) => {
+    setOpenFaqIndex((prev) => (prev === index ? null : index));
+  };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Hero-секция */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl mb-4">
-          Умный конвертер файлов <span className="text-indigo-600">«Конверт»</span>
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl mb-4">
+          Умный конвертер файлов <span className="text-blue-600">«Конверт»</span>
         </h1>
-        <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+        <p className="text-lg text-slate-500 max-w-2xl mx-auto">
           Быстрая и безопасная конвертация изображений и PDF документов онлайн. Без регистрации и водяных знаков.
         </p>
       </div>
 
       {/* Зона загрузки / Панель управления файлами */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 mb-16">
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 mb-16">
         {selectedFiles.length === 0 ? (
-          // Интерактивная Drop-зона
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 group"
+            className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center cursor-pointer hover:border-blue-500 transition-colors bg-slate-50/50 group"
           >
             <input
               type="file"
@@ -139,36 +150,34 @@ export default function HomePage() {
               className="hidden"
             />
             <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">📂</div>
-            <p className="text-xl font-medium text-gray-700 mb-1">
-              Перетащите файлы сюда или <span className="text-indigo-600 font-semibold">выберите на компьютере</span>
+            <p className="text-xl font-medium text-slate-700 mb-1">
+              Перетащите файлы сюда или <span className="text-blue-600 font-semibold">выберите на компьютере</span>
             </p>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-slate-400 mt-2">
               Макс. размер: {MAX_TOTAL_SIZE_MB} МБ суммарно. Поддерживаются JPG, PNG, WebP, TIFF, PDF
             </p>
           </div>
         ) : (
-          // Вариант А: Окошко настройки формата (как FreeConvert, но аккуратнее)
-          <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
+          <div className="border border-slate-200 rounded-xl p-6 bg-slate-50">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <span className="inline-block bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-md mb-2">
+                <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-md mb-2">
                   Успешно добавлено: {selectedFiles.length} файл(ов)
                 </span>
-                <h3 className="text-base font-medium text-gray-800 truncate max-w-md">
+                <h3 className="text-base font-medium text-slate-800 truncate max-w-md">
                   {selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles[0].name} и ещё ${selectedFiles.length - 1}...`}
                 </h3>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Исходный формат: <span className="font-bold uppercase text-gray-600">{detectedSource}</span>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Исходный формат: <span className="font-bold uppercase text-slate-600">{detectedSource}</span>
                 </p>
               </div>
 
-              {/* Умный Дропдаун выбора формата */}
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600">Конвертировать в:</span>
+                <span className="text-sm font-medium text-slate-600">Конвертировать в:</span>
                 <select
                   value={targetFormat}
                   onChange={(e) => setTargetFormat(e.target.value)}
-                  className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {getAvailableTargets(detectedSource).map((target) => (
                     <option key={target.ext} value={target.ext}>
@@ -178,28 +187,25 @@ export default function HomePage() {
                 </select>
               </div>
 
-              {/* Кнопки управления */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCancel}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
                   title="Отмена"
                 >
                   ✕
                 </button>
                 <button
                   onClick={handleProceed}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-6 py-2.5 rounded-lg shadow-md transition-all flex items-center gap-2"
                 >
-                  Далее
-                  <span>→</span>
+                  Далее <span>→</span>
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Вывод ошибок валидации */}
         {error && (
           <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
             <div className="flex">
@@ -210,52 +216,71 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Сетка инструментов для SEO и быстрой навигации */}
-      <div className="space-y-12">
-        {/* Блок картинок */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            🖼️ Конвертер изображений
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {imageTools.map((tool) => (
-              <div
-                key={tool.slug}
-                onClick={() => navigate(`/tool/${tool.slug}`)}
-                className="border border-gray-100 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer bg-white hover:border-indigo-200 group"
-              >
-                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform inline-block">{tool.icon}</div>
-                <h3 className="font-semibold text-gray-800 mb-1 group-hover:text-indigo-600">
-                  {tool.sourceName} в {tool.targetName}
-                </h3>
-                <p className="text-xs text-gray-400 line-clamp-2">{tool.description}</p>
-              </div>
-            ))}
-          </div>
+      {/* БЛОК СЕО 1: НАШИ ПРЕИМУЩЕСТВА */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center">
+          <div className="text-3xl mb-3">🛡️</div>
+          <h3 className="font-bold text-slate-800 mb-2">Надежная защита</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Файлы защищены сквозным шифрованием и полностью удаляются с серверов через 60 минут. Никаких утечек.
+          </p>
         </div>
-
-        {/* Блок PDF */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            📄 Инструменты PDF и документы
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {pdfTools.map((tool) => (
-              <div
-                key={tool.slug}
-                onClick={() => navigate(`/tool/${tool.slug}`)}
-                className="border border-gray-100 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer bg-white hover:border-indigo-200 group"
-              >
-                <div className="text-2xl mb-2 group-hover:scale-110 transition-transform inline-block">{tool.icon}</div>
-                <h3 className="font-semibold text-gray-800 mb-1 group-hover:text-indigo-600">
-                  {tool.sourceName} в {tool.targetName}
-                </h3>
-                <p className="text-xs text-gray-400 line-clamp-2">{tool.description}</p>
-              </div>
-            ))}
-          </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center">
+          <div className="text-3xl mb-3">💎</div>
+          <h3 className="font-bold text-slate-800 mb-2">Максимальное качество</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Продвинутые библиотеки обработки сохраняют исходное разрешение, сочные цвета и четкость графики.
+          </p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center">
+          <div className="text-3xl mb-3">⚡</div>
+          <h3 className="font-bold text-slate-800 mb-2">100% Бесплатно</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Конвертируйте документы без водяных знаков, скрытых платежей, подписок и обязательной регистрации.
+          </p>
         </div>
       </div>
+
+      {/* БЛОК СЕО 2: ИНТЕРАКТИВНЫЙ FAQ АККОРДЕОН */}
+      <div className="border-t border-slate-200/60 pt-10">
+        <h2 className="text-2xl font-extrabold text-slate-900 text-center mb-8">
+          Часто задаваемые вопросы (FAQ)
+        </h2>
+
+        <div className="space-y-3">
+          {faqData.map((item, index) => {
+            const isOpen = openFaqIndex === index;
+            return (
+              <div
+                key={index}
+                className="bg-white border border-slate-200/70 rounded-xl overflow-hidden transition-all duration-200"
+              >
+                <button
+                  onClick={() => toggleFaq(index)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left font-semibold text-slate-800 hover:bg-slate-50/80 transition-colors focus:outline-none"
+                >
+                  <span className="text-sm md:text-base">{item.q}</span>
+                  <span className={`text-slate-400 text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+
+                {/* Плавное раскрытие ответа */}
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    isOpen ? 'max-h-48 border-t border-slate-100 bg-slate-50/40' : 'max-h-0'
+                  }`}
+                >
+                  <p className="p-5 text-sm text-slate-600 leading-relaxed">
+                    {item.a}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 }
