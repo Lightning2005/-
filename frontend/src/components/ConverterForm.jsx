@@ -1,10 +1,18 @@
 // src/components/ConverterForm.jsx
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function ConverterForm({ config }) {
+export default function ConverterForm({ config, slug, preloadedFiles }) {
   const [files, setFiles] = useState([]);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+
+  // Эффект для подтягивания файлов, прилетевших с главной страницы
+  useEffect(() => {
+    if (preloadedFiles && preloadedFiles.length > 0) {
+      setFiles(preloadedFiles);
+    }
+  }, [preloadedFiles, slug]); // Перезапускаем, если сменился инструмент или файлы
 
   // Предотвращаем открытие файлов браузером по умолчанию
   useEffect(() => {
@@ -51,20 +59,28 @@ export default function ConverterForm({ config }) {
     fileInputRef.current.click();
   };
 
-  // Универсальная валидация на основе config.accept
+  // Универсальная валидация на основе config.accept и config.maxFiles
   const handleFiles = (newFiles) => {
+    setError('');
+
     const filtered = newFiles.filter(file => {
       const ext = `.${file.name.split('.').pop().toLowerCase()}`;
-      // Проверяем, входит ли расширение файла в строку разрешенных (например, ".jpg,.jpeg")
       return config.accept.toLowerCase().includes(ext);
     });
 
     if (filtered.length === 0) {
-      alert(`Пожалуйста, выберите файлы в формате ${config.sourceName}`);
+      setError(`Пожалуйста, выберите файлы в формате ${config.sourceName}`);
       return;
     }
 
-    setFiles((prev) => [...prev, ...filtered]);
+    setFiles((prev) => {
+      const updatedList = [...prev, ...filtered];
+      if (updatedList.length > config.maxFiles) {
+        setError(`Превышен лимит! Для этого инструмента можно выбрать не более ${config.maxFiles} файлов.`);
+        return prev;
+      }
+      return updatedList;
+    });
   };
 
   return (
@@ -108,13 +124,31 @@ export default function ConverterForm({ config }) {
           {isDragActive ? 'Сбросьте файлы сюда' : 'Перетащите файлы сюда или нажмите для выбора'}
         </span>
         <span className="text-xs text-slate-400 font-normal mt-2">
-          Поддерживаются только файлы с расширением {config.sourceName}
+          Поддерживаются только файлы с расширением {config.sourceName} (Макс: {config.maxFiles} шт.)
         </span>
       </div>
 
-      <div className="w-full max-w-xl text-center text-sm text-slate-500">
-        Выбрано файлов: <span className="font-bold text-slate-800">{files.length}</span>
+      {/* Ошибки валидации */}
+      {error && (
+        <div className="w-full max-w-xl bg-red-50 border-l-4 border-red-500 p-3 rounded-md text-sm text-red-700 font-medium">
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* Статистика файлов */}
+      <div className="w-full max-w-xl text-center text-sm text-slate-500 flex justify-between px-2">
+        <span>Выбрано файлов: <span className="font-bold text-slate-800">{files.length}</span> из {config.maxFiles}</span>
+        {files.length > 0 && (
+          <button onClick={() => setFiles([])} className="text-red-500 hover:underline">Очистить список</button>
+        )}
       </div>
+
+      {/* Кнопка отправки на бэкенд */}
+      {files.length > 0 && (
+        <button className="w-full max-w-xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+          <span>🚀</span> Конвертировать в {config.targetName}
+        </button>
+      )}
 
       <div className="w-full max-w-2xl border-t border-slate-100 pt-6">
         <h3 className="font-semibold text-lg mb-2 text-slate-800">Как это работает:</h3>

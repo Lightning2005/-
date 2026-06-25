@@ -1,10 +1,11 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { SUPPORTED_TOOLS } from '../config/tools';
-import ConverterForm from '../components/ConverterForm'; // Создадим на следующем шаге
+import ConverterForm from '../components/ConverterForm';
 
 export default function ConverterPage() {
   const { slug } = useParams();
+  const location = useLocation();
   const toolConfig = SUPPORTED_TOOLS[slug];
 
   // Если пользователь ввёл некорректный URL (нет такого инструмента в конфиге)
@@ -23,6 +24,14 @@ export default function ConverterPage() {
     );
   }
 
-  // Если всё ок — рендерим универсальную форму и передаем ей настройки
-  return <ConverterForm config={toolConfig} slug={slug} />;
+  // Забираем предзагруженные файлы, если они пришли с главной страницы
+  const preloadedFiles = location.state?.preloadedFiles || null;
+
+  // Очищаем стейт истории браузера, чтобы файлы не оставались там при перезагрузке
+  if (location.state?.preloadedFiles) {
+    window.history.replaceState({}, document.title);
+  }
+
+  // Передаем настройки и предзагруженные файлы в форму
+  return <ConverterForm config={toolConfig} slug={slug} preloadedFiles={preloadedFiles} />;
 }
