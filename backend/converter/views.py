@@ -40,9 +40,15 @@ class PdfToImagesView(APIView):
         if not uploaded_pdf:
             return Response({"error": "Файл PDF не передан"}, status=400)
 
+        target_format = request.data.get('target', 'jpg').lower()
+        if target_format not in ('jpg', 'jpeg', 'png'):
+            return Response(
+                {"error": "Поддерживаются только форматы JPG и PNG"},
+                status=400,
+            )
+
         try:
-            # Вызываем функцию конвертации
-            zip_file = convert_pdf_to_images(uploaded_pdf)
+            zip_file = convert_pdf_to_images(uploaded_pdf, target_format)
 
             # Возвращаем ZIP-архив пользователю
             return FileResponse(

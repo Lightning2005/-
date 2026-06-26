@@ -1,8 +1,6 @@
 // src/components/ConverterForm.jsx
 import React, { useState, useRef, useEffect } from 'react';
-
-// Базовый URL бэкенда (в будущем вынесем в .env)
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import { runConversion, downloadBlob } from '../services/api';
 
 export default function ConverterForm({ config, slug, preloadedFiles }) {
   const [files, setFiles] = useState([]);
@@ -67,9 +65,11 @@ export default function ConverterForm({ config, slug, preloadedFiles }) {
   const handleFiles = (newFiles) => {
     setError('');
 
-    const filtered = newFiles.filter(file => {
+    const allowedExts = config.accept.toLowerCase().split(',').map((s) => s.trim());
+
+    const filtered = newFiles.filter((file) => {
       const ext = `.${file.name.split('.').pop().toLowerCase()}`;
-      return config.accept.toLowerCase().includes(ext);
+      return allowedExts.includes(ext);
     });
 
     if (filtered.length === 0) {
@@ -95,59 +95,8 @@ export default function ConverterForm({ config, slug, preloadedFiles }) {
     setError('');
 
     try {
-      const formData = new FormData();
-      let endpoint = '';
-      let defaultFilename = 'converted_file';
-
-      // Прямое ветвление логики на основе полей конфигурации
-      if (config.target === 'pdf') {
-        // Направление: Картинки в PDF
-        endpoint = '/api/images-to-pdf/';
-        defaultFilename = 'converted_images.pdf';
-
-        // Пакуем массив файлов под ключом 'images'
-        files.forEach(file => {
-          formData.append('images', file);
-        });
-      } else if (config.source === 'pdf') {
-        // Направление: PDF в Картинки
-        endpoint = '/api/pdf-to-images/';
-        defaultFilename = 'converted_pages.zip';
-
-        // Отправляем один файл под ключом 'pdf'
-        formData.append('pdf', files[0]);
-      } else {
-        throw new Error('Данное направление конвертации временно не поддерживается сервером.');
-      }
-
-      // Отправляем скрытый фоновый запрос на бэкенд
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        body: formData,
-        // Content-Type не пишем, браузер сформирует multipart/form-data автоматически
-      });
-
-      // Обработка ошибок от Django REST Framework
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
-      }
-
-      // Получаем бинарный поток (файл) от сервера
-      const blob = await response.blob();
-
-      // Генерация временной ссылки в памяти браузера и автоскачивание
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', defaultFilename);
-      document.body.appendChild(link);
-      link.click();
-
-      // Вычищаем DOM и освобождаем оперативную память
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-
+      const { blob, filename } = await runConversion(config, files);
+      downloadBlob(blob, filename);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Произошла ошибка при отправке запроса на сервер.');

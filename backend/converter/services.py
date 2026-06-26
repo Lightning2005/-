@@ -46,8 +46,19 @@ def convert_images_to_pdf(uploaded_images):
     return pdf_buffer
 
 
-# 2. Твоя функция для PDF -> Images
-def convert_pdf_to_images(uploaded_pdf):
+# 2. Функция для PDF -> Images (JPG или PNG)
+def convert_pdf_to_images(uploaded_pdf, target_format='jpg'):
+    target_format = target_format.lower()
+
+    if target_format in ('jpg', 'jpeg'):
+        pil_format = 'JPEG'
+        file_ext = 'jpg'
+    elif target_format == 'png':
+        pil_format = 'PNG'
+        file_ext = 'png'
+    else:
+        raise ValueError(f"Формат {target_format} не поддерживается для PDF.")
+
     pdf_bytes = uploaded_pdf.read()
     pages = convert_from_bytes(pdf_bytes, poppler_path=settings.POPPLER_PATH)
     zip_buffer = io.BytesIO()
@@ -55,9 +66,12 @@ def convert_pdf_to_images(uploaded_pdf):
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for index, page in enumerate(pages):
             img_buffer = io.BytesIO()
-            page.save(img_buffer, format='JPEG', quality=90)
+            if pil_format == 'JPEG':
+                page.save(img_buffer, format='JPEG', quality=90)
+            else:
+                page.save(img_buffer, format='PNG')
             img_buffer.seek(0)
-            zip_file.writestr(f"page_{index + 1}.jpg", img_buffer.read())
+            zip_file.writestr(f"page_{index + 1}.{file_ext}", img_buffer.read())
 
     zip_buffer.seek(0)
     return zip_buffer

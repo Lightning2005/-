@@ -1,4 +1,5 @@
 import io
+import zipfile
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from PIL import Image
@@ -81,6 +82,42 @@ class ImagesToPdfAPITestCase(APITestCase):
         # Проверяем, что архив не пустой
         zip_content = b"".join(response.streaming_content)
         self.assertTrue(len(zip_content) > 0)
+
+    def test_pdf_to_png_conversion(self):
+        """Тест конвертации PDF в PNG через параметр target"""
+        url = reverse('pdf_to_images')
+
+        img = self.generate_test_image('source.jpg', ext='JPEG')
+        valid_pdf_buffer = convert_images_to_pdf([img])
+        valid_pdf_buffer.name = 'test.pdf'
+
+        data = {'pdf': valid_pdf_buffer, 'target': 'png'}
+        response = self.client.post(url, data, format='multipart')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/zip')
+
+        zip_content = b"".join(response.streaming_content)
+        self.assertTrue(len(zip_content) > 0)
+
+        with zipfile.ZipFile(io.BytesIO(zip_content)) as archive:
+            names = archive.namelist()
+            self.assertTrue(any(name.endswith('.png') for name in names))
+            self.assertFalse(any(name.endswith('.jpg') for name in names))
+
+    def test_pdf_to_images_invalid_target(self):
+        """Тест ошибки при неподдерживаемом формате для PDF"""
+        url = reverse('pdf_to_images')
+
+        img = self.generate_test_image('source.jpg', ext='JPEG')
+        valid_pdf_buffer = convert_images_to_pdf([img])
+        valid_pdf_buffer.name = 'test.pdf'
+
+        data = {'pdf': valid_pdf_buffer, 'target': 'webp'}
+        response = self.client.post(url, data, format='multipart')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('error', response.data)
 
 
 class GenericConvertAPITestCase(APITestCase):
